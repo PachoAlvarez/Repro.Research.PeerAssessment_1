@@ -1,0 +1,188 @@
+Peer Assessment_1 W2_M5
+========================================================
+Read de data, in the working directory, and modify the time format
+
+```{r}
+data <- read.csv("activity.csv", header=T)
+data$date <- as.Date(data$date, "%Y-%m-%d")
+```
+## QUESTION No.1
+### What is mean total number of steps taken per day?
+**For this part of the assignment, you can ignore the missing values in the dataset**
+
+**1. Make a histogram of the total number of steps taken each day**
+
+```{r}
+sum.day.deletingNA    <- with(subset(data, steps != "NA"), 
+                              tapply(steps, date, sum))
+mean.day.deletingNA   <- with(subset(data, steps != "NA"), 
+                              tapply(steps, date, mean))
+median.day.deletingNA <- with(subset(data, steps != "NA"), 
+                              tapply(steps, date, median))
+```
+```{r fig.width=7, fig.height=6}
+hist(sum.day.deletingNA, col="green", 
+     main="Histogram of the Total Number of Steps Taken Each Day",
+     xlab="Number of steps taken each day")
+mtext("--- deleting NA data ---")
+```
+
+**2. Calculate and report the mean and median total number of steps taken**
+**per day**
+
+```{r}
+ (rpta.deletingNA <- data.frame(DATE=names(mean.day.deletingNA), 
+                               MEANS.DAY.delNA=as.vector(mean.day.deletingNA), 
+                               MEDIANS.DAY.delNA=as.vector(median.day.deletingNA)))
+```
+
+## QUESTION No.2
+### What is the average daily activity pattern?
+
+**1. Make a time series plot (i.e. type = "l" ) of the 5-minute interval (x-axis)**
+**and the average number of steps taken, averaged across all days (y-axis)**
+
+```{r}
+mean.interval <- with(subset(data, steps != "NA"), tapply(steps, interval, mean))
+```
+```{r fig.width=7, fig.height=6}
+plot(names(mean.interval), as.vector(mean.interval), type="l", col=4,    
+     xlab="interval", ylab="Average number of steps", main="Time Series")
+```
+
+**2. Which 5-minute interval, on average across all the days in the dataset,**
+**contains the maximum number of steps?**
+
+```{r}
+(names(which(mean.interval==max(mean.interval))))
+```
+
+## QUESTION No.3
+### What is the impact of imputing missing data on the estimates of the total
+### daily number of steps?
+
+**1. Calculate and report the total number of missing values in the dataset**
+ (i.e. the total number of rows with NAs)
+```{r}
+sum(is.na(data$steps))
+```
+
+**2. Devise a strategy for filling in all of the missing values in the dataset.**
+The strategy does not need to be sophisticated. For example, you could use
+the mean/median for that day, or the mean for that 5-minute interval, etc.
+```{r}
+steps.imputingNA <- ifelse(is.na(data$steps), 
+                           mean.interval[as.character(data$interval[which(is.na(data$steps))])],
+                           data$steps)
+```
+
+**3. Create a new dataset that is equal to the original dataset but with the**
+**missing data filled in**
+```{r}
+data.imputingNA       <- data
+data.imputingNA$steps <- steps.imputingNA
+```
+
+**4. Make a histogram of the total number of steps taken each day and Calculate**
+**and report the mean and median total number of steps taken per day.**
+```{r}
+sum.day.imputingNA    <- with(data.imputingNA, tapply(steps, date, sum))
+mean.day.imputingNA   <- with(data.imputingNA, tapply(steps, date, mean))
+median.day.imputingNA <- with(data.imputingNA, tapply(steps, date, median))
+```
+```{r fig.width=7, fig.height=6}
+hist(sum.day.imputingNA,   col="blue",
+     main="Histogram of the Total Number of Steps Taken Each Day",
+     xlab="Number of steps taken each day")
+mtext("--- imputing NA data ---")
+```
+```{r}
+(rpta.imputingNA <- data.frame(DATE=names(mean.day.imputingNA), 
+                               MEANS.DAY.impNA=as.vector(mean.day.imputingNA), 
+                               MEDIANS.DAY.impNA=as.vector(median.day.imputingNA)))
+```
+
+## Do these values differ from the estimates from the first part of the assignment?
+**----------------- Visualization**
+```{r fig.width=7, fig.height=6}
+par(mfrow=c(2,3))
+par(mar=c(5.1, 4.1, .1, 2.1))
+par(oma=c(0, 0, 4, 0))
+
+hist(sum.day.deletingNA, col="green", xlab="", main="", 
+     ylab="deleting NA data")
+hist(mean.day.deletingNA, col="green", main="", ylab="", xlab="")
+hist(median.day.deletingNA, main="", ylab="", xlab="")
+hist(sum.day.imputingNA, col="blue", main="", xlab="Total per day",
+     ylab="imputing NA data")
+hist(mean.day.imputingNA, col="blue", main="", ylab="", xlab="Mean per day")
+hist(median.day.imputingNA, col="blue", main="", ylab="", xlab="Median per day")
+title(main="Number of Steps Taken Each Day", outer=T)
+```
+
+**----------------- Tabular comparison**
+```{r}
+summaryComparison <- function(vector1, vector2){
+        a      <- summary(vector1)
+        namesT <- names(a)
+        a      <- as.vector(a)
+        b      <- as.vector(summary(vector2))
+        summaryMeans <- data.frame(a, b)
+        rownames(summaryMeans) <- namesT
+        colnames(summaryMeans) <- c("Vector 1", "Vector 2")
+        summaryMeans
+}
+
+summaryComparison(mean.day.deletingNA, mean.day.imputingNA)
+```
+
+
+## QUESTION No.4
+### Are there differences in activity patterns between weekdays and week-ends?
+**For this part the weekdays() function may be of some help here. Use the dataset**
+**with the filled-in missing values for this part**
+
+**1. Create a new factor variable in the dataset with two levels - "weekday"**
+**and "weekend" indicating whether a given date is a weekday or weekend day**
+```{r}
+we           <- c("Monday"=1, "Tuesday"=2, "Wednesday"=3, "Thursday"=4, 
+                  "Friday"=5, "Saturday"=6, "Sunday"=7)
+wee          <- weekdays(data.imputingNA$date)
+week         <-we[wee]
+data.imputingNA$week <- as.factor(ifelse(week<6,"weekday","weekend"))
+```
+
+**Make a panel plot containing a time series plot (i.e. type = "l" ) of the**
+**5-minute interval (x-axis) and the average number of steps taken, averaged**
+**across all weekday days or weekend days (y-axis).**
+```{r}
+meanIntervalWeekday <- with(subset(data.imputingNA, week=="weekday"), 
+                            tapply(steps, interval, mean))
+
+meanIntervalWeekend <- with(subset(data.imputingNA, week=="weekend"), 
+                            tapply(steps, interval, mean))
+```
+
+
+**----------------- Visualization**
+```{r fig.width=7, fig.height=6}
+par(mfrow=c(3,1))
+par(mar=c(5.1, 4.1, .1, 2.1))
+par(oma=c(0, 0, 4, 0))
+plot(names(meanIntervalWeekday), as.vector(meanIntervalWeekday), type="l", col=4,    
+     xlab="", ylab="Weekday")
+plot(names(meanIntervalWeekend), as.vector(meanIntervalWeekend), type="l", col=2,    
+     xlab="", ylab="Weekend")
+plot(names(meanIntervalWeekday), as.vector(meanIntervalWeekday), type="l", col=4,    
+     xlab="interval", ylab="", main="")
+lines(names(meanIntervalWeekend), as.vector(meanIntervalWeekend), type="l", col=2,    
+      xlab="interval", ylab="Average number of steps")
+legend("topright", lty=1, col=c(4, 2),
+       legend=c("Weekday", "Weekend"))
+title(main="Average Number of Steps Taken Each Interval", outer=T)
+```
+
+**----------------- Tabular comparison**
+```{r}
+summaryComparison(meanIntervalWeekday, meanIntervalWeekend)
+```
